@@ -1,7 +1,6 @@
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local TweenService = game:GetService("TweenService")
-local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
