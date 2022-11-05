@@ -404,6 +404,8 @@ local function createPrompt(prompt, inputType, gui)
 	end)
 
 	local function updateUIFromPrompt()
+		promptUI.Enabled = prompt.Enabled
+		
 		local promptHeight = 72
 		local promptWidth = 72
 		local textPaddingRight = 24
