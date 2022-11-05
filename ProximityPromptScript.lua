@@ -472,7 +472,7 @@ local function createPrompt(prompt, inputType, gui)
 			tween:Play()
 		end
 
-		wait(0.2)
+		wait(fastTime)
 
 		promptUI.Parent = nil
 	end
