@@ -2,6 +2,7 @@ local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local LocalPlayer = Players.LocalPlayer
@@ -107,22 +108,14 @@ local function createPrompt(prompt, inputType, gui)
 	promptUI.Enabled = true
 
 	local frame = promptUI.PromptFrame
+	local padding = frame.UIPadding
+	local listLayout = frame.UIListLayout
 	local inputFrame = frame.InputFrame
-	local actionText = frame.ActionText
-	local objectText = frame.ObjectText
+	local textFrame = frame.TextFrame
+	local actionText = textFrame.ActionText
+	local objectText = textFrame.ObjectText
 
-	-- Tweens for Frame and children
-	local backgroundTransparency = frame.BackgroundTransparency
-	local imageTransparency = frame.ImageTransparency
-	frame.BackgroundTransparency = 1
-	frame.ImageTransparency = 1
-	-- TODO consolidate this with the other tweens for image labels, theres some duplication
-	-- TODO make these functions somehow consolidate the properties objects?
-	table.insert(tweensForButtonHoldBegin, TweenService:Create(frame, tweenInfoFast, { Size = UDim2.fromScale(0.5, 1), BackgroundTransparency = 1, ImageTransparency = 1 }))
-	table.insert(tweensForButtonHoldEnd, TweenService:Create(frame, tweenInfoFast, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = backgroundTransparency, ImageTransparency = imageTransparency }))
-	table.insert(tweensForFadeOut, TweenService:Create(frame, tweenInfoFast, { Size = UDim2.fromScale(0.5, 1), BackgroundTransparency = 1, ImageTransparency = 1 }))
-	table.insert(tweensForFadeIn, TweenService:Create(frame, tweenInfoFast, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = backgroundTransparency, ImageTransparency = imageTransparency }))
-
+	-- Tween helper functions
 	local function setupUIStrokeTweens(uiStroke)
 		local transparency = uiStroke.Transparency
 		uiStroke.Transparency = 1
@@ -160,6 +153,18 @@ local function createPrompt(prompt, inputType, gui)
 		table.insert(tweensForFadeOut, TweenService:Create(imageLabel, tweenInfoFast, { ImageTransparency = 1 }))
 		table.insert(tweensForFadeIn, TweenService:Create(imageLabel, tweenInfoFast, { ImageTransparency = imageTransparency }))
 	end
+	
+	-- Tweens for Frame and children
+	setupImageLabelTweens(frame)
+	setupGUIObjectTweens(frame)
+	
+	local listLayoutPadding = listLayout.Padding
+	listLayout.Padding = UDim.new(-0.25, 0)
+	table.insert(tweensForButtonHoldBegin, TweenService:Create(listLayout, tweenInfoFast, { Padding = UDim.new(-0.25, 0) }))
+	table.insert(tweensForButtonHoldEnd, TweenService:Create(listLayout, tweenInfoFast, { Padding = listLayoutPadding }))
+	table.insert(tweensForFadeOut, TweenService:Create(listLayout, tweenInfoFast, { Padding = UDim.new(-0.25, 0) }))
+	table.insert(tweensForFadeIn, TweenService:Create(listLayout, tweenInfoFast, { Padding = listLayoutPadding }))
+
 
 	local function setupUnexpectedChildTweens(child)
 		if child:IsA("UIStroke") then
@@ -181,19 +186,27 @@ local function createPrompt(prompt, inputType, gui)
 		end
 	end
 
-	-- Key is UI object, value is whether or not we should tween out the children of it in the same manner
-	local expectedFrameChildren = {[inputFrame] = false, [actionText] = true, [objectText] = true}
-	for _, child in pairs(frame:GetChildren()) do
-		if expectedFrameChildren[child] == nil then
-			-- Unexpected child of the frame and direct children elements
-			setupUnexpectedChildTweens(child)
-		elseif expectedFrameChildren[child] == true then
-			for _, grandChild in pairs(child:GetChildren()) do
-				-- All children of ActionText or ObjectText
-				setupUnexpectedChildTweens(grandChild)
+	local function handleUnexpectedChildren(parent, expectedChildrenDict)
+		for _, child in pairs(parent:GetChildren()) do
+			local expectedChildren = expectedChildrenDict[child]
+			if expectedChildren == nil then
+				-- Unexpected child of the frame and direct children elements
+				setupUnexpectedChildTweens(child)
+			elseif expectedChildren == true then
+				for _, grandChild in pairs(child:GetChildren()) do
+					setupUnexpectedChildTweens(grandChild)
+				end
+			elseif expectedChildren ~= false then
+				-- Assert typeof expectedChildren is table
+				handleUnexpectedChildren(child, expectedChildren)
 			end
 		end
 	end
+	
+	-- Key is UI object, value is whether or not we should tween out the children of it in the same manner,
+	-- or the children of that frame to handle in the same way? thats the best explanation i have ok
+	local expectedFrameChildren = {[inputFrame] = false, [textFrame] = { [actionText] = true, [objectText] = true }}
+	handleUnexpectedChildren(frame, expectedFrameChildren)
 
 	-- Tweens for InputFrame
 	local resizeableInputFrame = inputFrame.Frame
@@ -391,36 +404,52 @@ local function createPrompt(prompt, inputType, gui)
 	end)
 
 	local function updateUIFromPrompt()
-		-- todo: Use AutomaticSize instead of GetTextSize when that feature becomes available
-		local actionTextSize = TextService:GetTextSize(prompt.ActionText, actionText.TextSize, actionText.Font, Vector2.new(1000, 1000))
-		local objectTextSize = TextService:GetTextSize(prompt.ObjectText, objectText.TextSize, objectText.Font, Vector2.new(1000, 1000))
-		local maxTextWidth = math.max(actionTextSize.X, objectTextSize.X)
 		local promptHeight = 72
 		local promptWidth = 72
-		local textPaddingLeft = 72
-
-		if (prompt.ActionText ~= nil and prompt.ActionText ~= '') or
-			(prompt.ObjectText ~= nil and prompt.ObjectText ~= '') then
-			promptWidth = maxTextWidth + textPaddingLeft + 24
-		end
+		local textPaddingRight = 24
 
 		local actionTextYOffset = 0
 		if prompt.ObjectText ~= nil and prompt.ObjectText ~= '' then
 			actionTextYOffset = 9
 		end
-		actionText.Position = UDim2.new(0.5, textPaddingLeft - promptWidth/2, 0, actionTextYOffset)
-		objectText.Position = UDim2.new(0.5, textPaddingLeft - promptWidth/2, 0, -10)
 
 		actionText.Text = prompt.ActionText
 		objectText.Text = prompt.ObjectText
 		actionText.AutoLocalize = prompt.AutoLocalize
 		actionText.RootLocalizationTable = prompt.RootLocalizationTable
-
 		objectText.AutoLocalize = prompt.AutoLocalize
 		objectText.RootLocalizationTable = prompt.RootLocalizationTable
 
+		-- There is currently a bug with AutomaticSize where the vertical offset of the
+		-- ActionText affects the size of the overall frame. This adjusts for that existing bug.
+		-- Either that, or I'm misusing automatic size... which is very possible :)
+		textPaddingRight = textPaddingRight - actionTextYOffset
+
+		if
+			(prompt.ActionText ~= nil and prompt.ActionText ~= '')
+			or (prompt.ObjectText ~= nil and prompt.ObjectText ~= '')
+		then
+			padding.PaddingRight = UDim.new(0, textPaddingRight)
+		else
+			padding.PaddingRight = UDim.new(0, 0)
+		end
+
+		actionText.Position = UDim2.new(0, 0, 0, actionTextYOffset)
+		objectText.Position = UDim2.new(0, 0, 0, -10)
+
 		promptUI.Size = UDim2.fromOffset(promptWidth, promptHeight)
-		promptUI.SizeOffset = Vector2.new(prompt.UIOffset.X / promptUI.Size.Width.Offset, prompt.UIOffset.Y / promptUI.Size.Height.Offset)
+
+		-- BillboardGuis can't be automatically sized, so we need to calculate
+		-- the size based on the automatically sized prompt frame.
+		task.defer(function ()
+			-- Automatic sizing takes approximately 2 render cycles to be calculated
+			RunService.RenderStepped:Wait()
+			RunService.RenderStepped:Wait()
+
+			promptWidth = frame.AbsoluteSize.X
+			promptUI.Size = UDim2.fromOffset(promptWidth, promptHeight)
+			promptUI.SizeOffset = Vector2.new(prompt.UIOffset.X / promptUI.Size.Width.Offset, prompt.UIOffset.Y / promptUI.Size.Height.Offset)
+		end)
 	end
 
 	local changedConnection = prompt.Changed:Connect(updateUIFromPrompt)
@@ -463,7 +492,7 @@ local function onLoad()
 		if prompt.Style == Enum.ProximityPromptStyle.Default then
 			return
 		end
-
+		
 		local gui = getScreenGui()
 
 		local cleanupFunction = createPrompt(prompt, inputType, gui)
