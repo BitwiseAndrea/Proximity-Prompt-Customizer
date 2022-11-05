@@ -81,13 +81,13 @@ local function setUpCircularProgressBar(bar)
 end
 
 local function createPrompt(prompt, inputType, gui)
+	local fastTime = 0.2
 	local tweensForButtonHoldBegin = {}
 	local tweensForButtonHoldEnd = {}
 	local tweensForFadeOut = {}
 	local tweensForFadeIn = {}
 	local tweenInfoInFullDuration = TweenInfo.new(prompt.HoldDuration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-	local tweenInfoOutHalfSecond = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	local tweenInfoFast = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tweenInfoFast = TweenInfo.new(fastTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tweenInfoQuick = TweenInfo.new(0.06, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 	local tweenInfoInstant = TweenInfo.new(0, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
@@ -108,11 +108,14 @@ local function createPrompt(prompt, inputType, gui)
 
 	local frame = promptUI.PromptFrame
 	local listLayout = frame.UIListLayout
+	local padding = frame.UIPadding
 	local inputFrame = frame.InputFrame
 	local textFrame = frame.TextFrame
-	local padding = textFrame.UIPadding
 	local actionText = textFrame.ActionText
 	local objectText = textFrame.ObjectText
+	
+	-- We need to save this value for later :)
+	local initialPaddingRight = padding.PaddingRight
 
 	-- Tween helper functions
 	local function setupUIStrokeTweens(uiStroke)
@@ -401,17 +404,19 @@ local function createPrompt(prompt, inputType, gui)
 			tween:Play()
 		end
 	end)
-
+	
+	local function syncPromptSize()
+		promptUI.Size = UDim2.fromOffset(frame.AbsoluteSize.X, frame.AbsoluteSize.Y)
+		promptUI.SizeOffset = Vector2.new(prompt.UIOffset.X / promptUI.Size.Width.Offset, prompt.UIOffset.Y / promptUI.Size.Height.Offset)
+	end
+	
 	local function updateUIFromPrompt()
 		promptUI.Enabled = prompt.Enabled
 		
-		local promptHeight = 72
-		local promptWidth = 72
-		local textPaddingRight = 24
-		
 		local hasActionText = prompt.ActionText ~= nil and prompt.ActionText ~= ''
 		local hasObjectText = prompt.ObjectText ~= nil and prompt.ObjectText ~= ''
-
+		local hasText = hasActionText or hasObjectText
+		textFrame.Visible = hasText
 		objectText.Visible = hasObjectText
 
 		actionText.Text = prompt.ActionText
@@ -421,24 +426,22 @@ local function createPrompt(prompt, inputType, gui)
 		objectText.AutoLocalize = prompt.AutoLocalize
 		objectText.RootLocalizationTable = prompt.RootLocalizationTable
 
-		if hasActionText or hasObjectText then
-			padding.PaddingRight = UDim.new(0, textPaddingRight)
+		if not hasText then
+			-- Automatic size destroyed me so we are just going to set the padding
+			-- on the right equal to the padding on the left if there is no text
+			padding.PaddingRight = padding.PaddingLeft
 		else
-			padding.PaddingRight = UDim.new(0, 0)
+			padding.PaddingRight = initialPaddingRight
 		end
 
-		promptUI.Size = UDim2.fromOffset(promptWidth, promptHeight)
-
-		-- BillboardGuis can't be automatically sized, so we need to calculate
-		-- the size based on the automatically sized prompt frame.
+		-- BillboardGuis can't be sized based on their content, so we need to calculate
+		-- the size based on the automatically sized prompt frame. The size of the BillboardGui
+		-- is important because the text button won't receive input unless it's within it's bounds.
+		syncPromptSize()
 		task.defer(function ()
-			-- Automatic sizing takes approximately 2 render cycles to be calculated
-			RunService.RenderStepped:Wait()
-			RunService.RenderStepped:Wait()
-
-			promptWidth = frame.AbsoluteSize.X
-			promptUI.Size = UDim2.fromOffset(promptWidth, promptHeight)
-			promptUI.SizeOffset = Vector2.new(prompt.UIOffset.X / promptUI.Size.Width.Offset, prompt.UIOffset.Y / promptUI.Size.Height.Offset)
+			syncPromptSize()
+			wait(fastTime)
+			syncPromptSize()
 		end)
 	end
 
