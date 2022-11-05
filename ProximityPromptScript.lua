@@ -107,10 +107,10 @@ local function createPrompt(prompt, inputType, gui)
 	promptUI.Enabled = true
 
 	local frame = promptUI.PromptFrame
-	local padding = frame.UIPadding
 	local listLayout = frame.UIListLayout
 	local inputFrame = frame.InputFrame
 	local textFrame = frame.TextFrame
+	local padding = textFrame.UIPadding
 	local actionText = textFrame.ActionText
 	local objectText = textFrame.ObjectText
 
@@ -408,11 +408,11 @@ local function createPrompt(prompt, inputType, gui)
 		local promptHeight = 72
 		local promptWidth = 72
 		local textPaddingRight = 24
+		
+		local hasActionText = prompt.ActionText ~= nil and prompt.ActionText ~= ''
+		local hasObjectText = prompt.ObjectText ~= nil and prompt.ObjectText ~= ''
 
-		local actionTextYOffset = 0
-		if prompt.ObjectText ~= nil and prompt.ObjectText ~= '' then
-			actionTextYOffset = 9
-		end
+		objectText.Visible = hasObjectText
 
 		actionText.Text = prompt.ActionText
 		objectText.Text = prompt.ObjectText
@@ -421,22 +421,11 @@ local function createPrompt(prompt, inputType, gui)
 		objectText.AutoLocalize = prompt.AutoLocalize
 		objectText.RootLocalizationTable = prompt.RootLocalizationTable
 
-		-- There is currently a bug with AutomaticSize where the vertical offset of the
-		-- ActionText affects the size of the overall frame. This adjusts for that existing bug.
-		-- Either that, or I'm misusing automatic size... which is very possible :)
-		textPaddingRight = textPaddingRight - actionTextYOffset
-
-		if
-			(prompt.ActionText ~= nil and prompt.ActionText ~= '')
-			or (prompt.ObjectText ~= nil and prompt.ObjectText ~= '')
-		then
+		if hasActionText or hasObjectText then
 			padding.PaddingRight = UDim.new(0, textPaddingRight)
 		else
 			padding.PaddingRight = UDim.new(0, 0)
 		end
-
-		actionText.Position = UDim2.new(0, 0, 0, actionTextYOffset)
-		objectText.Position = UDim2.new(0, 0, 0, -10)
 
 		promptUI.Size = UDim2.fromOffset(promptWidth, promptHeight)
 
