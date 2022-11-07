@@ -55,6 +55,12 @@ local KeyCodeToTextMapping = {
 	[Enum.KeyCode.F10] = "F10",
 	[Enum.KeyCode.F11] = "F11",
 	[Enum.KeyCode.F12] = "F12",
+	[Enum.KeyCode.PageUp] = "PgUp",
+	[Enum.KeyCode.PageDown] = "PgDn",
+	[Enum.KeyCode.Home] = "Home",
+	[Enum.KeyCode.End] = "End",
+	[Enum.KeyCode.Insert] = "Ins",
+	[Enum.KeyCode.Delete] = "Del",
 }
 
 local function getScreenGui()
