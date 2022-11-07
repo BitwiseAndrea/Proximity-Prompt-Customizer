@@ -247,9 +247,9 @@ local function createPrompt(prompt, inputType, gui)
 	end
 	setupButtonFrameTweens()
 
-	local buttonImage = resizeableInputFrame.ButtonImage
-	local buttonText = resizeableInputFrame.ButtonText
 	local icon = resizeableInputFrame.ButtonTextImage
+	local buttonImage = resizeableInputFrame.ButtonImage
+	local buttonText = buttonImage.ButtonText
 
 	local function setupButtonTextTweens()
 		local textTransparency = buttonText.TextTransparency
@@ -335,9 +335,6 @@ local function createPrompt(prompt, inputType, gui)
 			buttonText.Visible = false
 			icon.Visible = true
 		elseif buttonTextString ~= nil and buttonTextString ~= '' then
-			if string.len(buttonTextString) > 2 then
-				buttonText.TextSize = math.round(buttonText.TextSize * 6/7)
-			end
 			setupButtonTextTweens()
 			buttonText.Text = buttonTextString
 
